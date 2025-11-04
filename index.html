@@ -22,10 +22,17 @@
         .table-header {
             background-color: #3b82f6; /* blue-500 */
             color: white;
-            padding: 0.75rem 1.5rem;
-            text-align: left;
+            padding: 0.75rem 0.5rem; /* Reducido para más columnas */
+            text-align: center;
             font-weight: 600;
             text-transform: uppercase;
+            font-size: 0.75rem; /* Reducido para más columnas */
+            line-height: 1.25rem;
+        }
+        .table-data {
+            padding: 0.5rem 0.5rem;
+            white-space: nowrap;
+            text-align: center;
             font-size: 0.875rem;
         }
         .total-row {
@@ -37,6 +44,12 @@
             font-weight: bold;
             color: #b45309; /* amber-800 */
         }
+        /* Clase para la columna final de TOTAL */
+        .final-total {
+            background-color: #bae6fd; /* light blue for emphasis */
+            color: #0369a1; /* strong blue text */
+            font-weight: 900;
+        }
     </style>
 </head>
 <body class="p-4 md:p-8">
@@ -46,7 +59,7 @@
             Dashboard de Horas - Pase a Producción SMART
         </h1>
         <p class="text-center text-gray-600 mb-8">
-            Resumen de horas registradas por día, totales y desviación (Planeado estándar: 16h, Revilla: 6h)
+            Análisis de horas registradas, desviación y cálculos de compensación.
         </p>
 
         <!-- Contenedor de Gráficos -->
@@ -66,7 +79,7 @@
 
         </div>
         
-        <!-- Tabla de Detalle por Día -->
+        <!-- Tabla de Detalle por Día (Sin cambios en esta tabla, solo en la de Resumen) -->
         <div class="card bg-white overflow-hidden mb-8">
             <h2 class="text-xl font-semibold text-gray-700 p-4 border-b">Horas Registradas Detalladas por Día</h2>
             <div class="overflow-x-auto">
@@ -91,17 +104,21 @@
         </div>
 
 
-        <!-- Tabla de Resumen (Desviación) -->
+        <!-- Tabla de Resumen (Desviación y Compensación) -->
         <div class="card bg-white overflow-hidden mb-8">
-            <h2 class="text-xl font-semibold text-gray-700 p-4 border-b">Resumen y Desviación de Horas</h2>
+            <h2 class="text-xl font-semibold text-gray-700 p-4 border-b">Resumen y Cálculo de Compensación de Horas</h2>
             <div class="overflow-x-auto">
                 <table id="dataTable" class="min-w-full divide-y divide-gray-200">
                     <thead>
                         <tr>
-                            <th class="table-header rounded-tl-xl">Colaborador</th>
-                            <th class="table-header">Horas Totales</th>
-                            <th class="table-header">Horas Planeadas</th>
-                            <th class="table-header rounded-tr-xl">Horas Adicionales (Desviación)</th>
+                            <th class="table-header rounded-tl-xl w-3/12">Colaborador</th>
+                            <th class="table-header w-1/12">Horas Registradas</th>
+                            <th class="table-header w-1/12">Horas Planeadas</th>
+                            <th class="table-header w-1/12">Excedente</th>
+                            <th class="table-header w-1/12">70%</th>
+                            <th class="table-header w-1/12">H. EXTRAS (Propuesta)</th>
+                            <th class="table-header w-2/12">COMPENSACIÓN (Propuesta)</th>
+                            <th class="table-header rounded-tr-xl w-2/12">TOTAL (Propuesta)</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-200" id="summaryTableBody">
@@ -140,48 +157,49 @@
 
     <script>
         // Contenido del archivo CSV para el análisis
-        const csvData = `COLABORADOR,viernes 17/10,Sabado 18/10,domingo 19/10,Total
-GIUBASSO JIMENEZ MARIANGELA FRANCHESCA,8,10,5.5,23.5
-LINARES VIÑA ALEXANDRA,12,21,13.5,46.5
-HERRERA CALERO CARLOS DANIEL,12,21,14,47
-YZQUIERDO TAPIA KEVIN ALEXANDER,10,17,15,42
-QUISPE APON OMAR GABRIEL ANDRE,9,16,16,41
-TAPARA ALDANA ROBERTO ARMANDO,10,18.5,13,41.5
-VILLAVICENCIO RAMOS DANIEL EDUARDO,11.5,15.5,12.2,39.2
-CARRASCO CUNYA ANTONY STHIF,10,11,15.5,36.5
-JULCA GONZALES JULIO CÉSAR,10,16,15.5,41.5
-PADILLA AVALOS DIOGO ARMANDO,10,0,8,18
-CONDORI CONDORI ROXANA,11,13.5,6.2,30.7
-REVILLA OCHOA JEISOM JAVIER,0,4,1.5,5.5
-,,,
-Horas planificadas,,,
-ACTIVIDADES PASE,HORAS IDEALES,,,
-"Pase Front, Back y BD",5,,,
-Pruebas post producción,10,,,
-Limpieza de datos QA (snapshot BD),1,,,
-Total,16,,,
-,,,
-Horas planificadas VS Registradas,,,
-COLABORADOR, HORAS TOTALES,HORAS PLANEADAS,HORAS ADICIONALES,
-GIUBASSO JIMENEZ MARIANGELA FRANCHESCA,23.5,16,7.5,
-LINARES VIÑA ALEXANDRA,46.5,16,30.5,
-HERRERA CALERO CARLOS DANIEL,47,16,31,
-YZQUIERDO TAPIA KEVIN ALEXANDER,42,16,26,
-QUISPE APON OMAR GABRIEL ANDRE,41,16,25,
-TAPARA ALDANA ROBERTO ARMANDO,41.5,16,25.5,
-VILLAVICENCIO RAMOS DANIEL EDUARDO,39.2,16,23.2,
-CARRASCO CUNYA ANTONY STHIF,36.5,16,20.5,
-JULCA GONZALES JULIO CÉSAR,41.5,16,25.5,
-PADILLA AVALOS DIOGO ARMANDO,18,16,2,
-CONDORI CONDORI ROXANA,30.7,16,14.7,
-REVILLA OCHOA JEISOM JAVIER,5.5,6,-0.5,
+        // NOTA: Se ha añadido una columna vacía al final de la primera sección para mantener la consistencia del parseo.
+        const csvData = `COLABORADOR,viernes 17/10,Sabado 18/10,domingo 19/10,Total,,,
+GIUBASSO JIMENEZ MARIANGELA FRANCHESCA,8,10,5.5,23.5,,,
+LINARES VIÑA ALEXANDRA,12,21,13.5,46.5,,,
+HERRERA CALERO CARLOS DANIEL,12,21,14,47,,,
+YZQUIERDO TAPIA KEVIN ALEXANDER,10,17,15,42,,,
+QUISPE APON OMAR GABRIEL ANDRE,9,16,16,41,,,
+TAPARA ALDANA ROBERTO ARMANDO,10,18.5,13,41.5,,,
+VILLAVICENCIO RAMOS DANIEL EDUARDO,11.5,15.5,12.2,39.2,,,
+CARRASCO CUNYA ANTONY STHIF,10,11,15.5,36.5,,,
+JULCA GONZALES JULIO CÉSAR,10,16,15.5,41.5,,,
+PADILLA AVALOS DIOGO ARMANDO,10,0,8,18,,,
+CONDORI CONDORI ROXANA,11,13.5,6.2,30.7,,,
+REVILLA OCHOA JEISOM JAVIER,0,4,1.5,5.5,,,
+,,,,,,,
+Horas planificadas,,,,,,,
+ACTIVIDADES PASE,HORAS IDEALES,,,,,,
+"Pase Front, Back y BD",5,,,,,
+Pruebas post producción,10,,,,,
+Limpieza de datos QA (snapshot BD),1,,,,,
+Total,16,,,,,
+,,,,,,,
+Horas planificadas VS Registradas,,,,,,,
+COLABORADOR, HORAS TOTALES,HORAS PLANEADAS,HORAS ADICIONALES,70%,HORAS EXTRAS,COMPENSACIÓN,TOTAL
+GIUBASSO JIMENEZ MARIANGELA FRANCHESCA,23.5,16,7.5,5.25,4.8,16.45,21.25
+LINARES VIÑA ALEXANDRA,46.5,16,30.5,21.35,4.8,32.55,37.35
+HERRERA CALERO CARLOS DANIEL,47,16,31,21.7,4.8,32.9,37.7
+YZQUIERDO TAPIA KEVIN ALEXANDER,42,16,26,18.2,4.8,29.4,34.2
+QUISPE APON OMAR GABRIEL ANDRE,41,16,25,17.5,4.8,28.7,33.5
+TAPARA ALDANA ROBERTO ARMANDO,41.5,16,25.5,17.85,4.8,29.05,33.85
+VILLAVICENCIO RAMOS DANIEL EDUARDO,39.2,16,23.2,16.24,4.8,27.44,32.24
+CARRASCO CUNYA ANTONY STHIF,36.5,16,20.5,14.35,4.8,25.55,30.35
+JULCA GONZALES JULIO CÉSAR,41.5,16,25.5,17.85,4.8,29.05,33.85
+PADILLA AVALOS DIOGO ARMANDO,18,16,2,1.4,4.8,7.4,12.2
+CONDORI CONDORI ROXANA,30.7,16,14.7,10.29,4.8,21.29,26.09
+REVILLA OCHOA JEISOM JAVIER,5.5,6,-0.5,-0.35,4.8,4.3,9.1
 `;
 
         /**
          * Estructura para almacenar los datos diarios y de resumen.
          * @typedef {Object} ParsedData
          * @property {Array<Object>} daily - Datos de horas por día.
-         * @property {Array<Object>} summary - Datos de resumen (total, planeado, desviación).
+         * @property {Array<Object>} summary - Datos de resumen (total, planeado, desviación, 70%, horas extras, compensación, total).
          */
 
         /**
@@ -194,31 +212,31 @@ REVILLA OCHOA JEISOM JAVIER,5.5,6,-0.5,
             const dailyData = [];
             const summaryData = [];
             
-            // Sección de Horas Diarias (Inicio del archivo)
+            // --- 1. Sección de Horas Diarias (Inicio del archivo) ---
             let dailyEndLine = lines.findIndex(line => line.includes('Horas planificadas VS Registradas'));
 
             if (lines.length > 0) {
                 // Las filas de datos comienzan en la línea 1 (índice 1)
                 for (let i = 1; i < dailyEndLine; i++) {
                     const line = lines[i].trim();
-                    if (line === '' || line.match(/^,*$/)) break;
+                    if (line === '' || line.match(/^,*$/) || line.includes('Horas planificadas')) break;
                     
                     const parts = line.split(',').map(p => p.trim());
-                    if (parts.length >= 5) {
+                    if (parts.length >= 4 && !isNaN(parseFloat(parts[4]))) {
                         dailyData.push({
                             colaborador: parts[0],
-                            dia1: parseFloat(parts[1]), 
-                            dia2: parseFloat(parts[2]), 
-                            dia3: parseFloat(parts[3]), 
-                            total: parseFloat(parts[4]),
+                            dia1: parseFloat(parts[1]) || 0, 
+                            dia2: parseFloat(parts[2]) || 0, 
+                            dia3: parseFloat(parts[3]) || 0, 
+                            total: parseFloat(parts[4]) || 0,
                         });
                     }
                 }
             }
 
 
-            // Sección de Horas de Resumen (Desviación)
-            const targetHeader = 'COLABORADOR, HORAS TOTALES,HORAS PLANEADAS,HORAS ADICIONALES,';
+            // --- 2. Sección de Horas de Resumen (Desviación y Compensación) ---
+            const targetHeader = 'COLABORADOR, HORAS TOTALES,HORAS PLANEADAS,HORAS ADICIONALES,70%,HORAS EXTRAS,COMPENSACIÓN,TOTAL';
             let startParsingSummary = false;
 
             for (const line of lines) {
@@ -236,18 +254,29 @@ REVILLA OCHOA JEISOM JAVIER,5.5,6,-0.5,
 
                     const parts = trimmedLine.split(',').map(p => p.trim());
                     
-                    if (parts.length >= 4) {
+                    // Asegurarse de que haya suficientes partes para el nuevo formato
+                    if (parts.length >= 8) {
                         const colaborador = parts[0];
-                        const totalHoras = parseFloat(parts[1]);
-                        const planeadas = parseFloat(parts[2]);
-                        const adicionales = parseFloat(parts[3]);
+                        // Convertir a float. Usamos 0 si la conversión falla.
+                        const totalHoras = parseFloat(parts[1]) || 0;
+                        const planeadas = parseFloat(parts[2]) || 0;
+                        const adicionales = parseFloat(parts[3]) || 0;
+                        const p70 = parseFloat(parts[4]) || 0;
+                        const extras = parseFloat(parts[5]) || 0;
+                        const compensacion = parseFloat(parts[6]) || 0;
+                        const total = parseFloat(parts[7]) || 0;
 
-                        if (!isNaN(totalHoras) && !isNaN(planeadas) && colaborador) {
+
+                        if (colaborador) {
                             summaryData.push({
                                 colaborador: colaborador,
                                 totalHoras: totalHoras,
                                 horasPlaneadas: planeadas,
-                                horasAdicionales: adicionales
+                                horasAdicionales: adicionales,
+                                p70: p70,
+                                horasExtras: extras,
+                                compensacion: compensacion,
+                                total: total
                             });
                         }
                     }
@@ -272,19 +301,19 @@ REVILLA OCHOA JEISOM JAVIER,5.5,6,-0.5,
             let totalGeneral = 0;
 
             dailyData.forEach(item => {
-                totalDia1 += item.dia1 || 0;
-                totalDia2 += item.dia2 || 0;
-                totalDia3 += item.dia3 || 0;
-                totalGeneral += item.total || 0;
+                totalDia1 += item.dia1;
+                totalDia2 += item.dia2;
+                totalDia3 += item.dia3;
+                totalGeneral += item.total;
 
                 const row = document.createElement('tr');
                 row.classList.add('hover:bg-blue-50', 'transition-colors');
                 row.innerHTML = `
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${item.colaborador}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${(item.dia1 || 0).toFixed(1)} h</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${(item.dia2 || 0).toFixed(1)} h</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${(item.dia3 || 0).toFixed(1)} h</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">${(item.total || 0).toFixed(1)} h</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-left">${item.colaborador}</td>
+                    <td class="table-data text-gray-700">${item.dia1.toFixed(1)} h</td>
+                    <td class="table-data text-gray-700">${item.dia2.toFixed(1)} h</td>
+                    <td class="table-data text-gray-700">${item.dia3.toFixed(1)} h</td>
+                    <td class="table-data text-gray-900 font-semibold">${item.total.toFixed(1)} h</td>
                 `;
                 tableBody.appendChild(row);
             });
@@ -293,18 +322,18 @@ REVILLA OCHOA JEISOM JAVIER,5.5,6,-0.5,
             const totalRow = document.createElement('tr');
             totalRow.classList.add('total-row');
             totalRow.innerHTML = `
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">TOTALES GENERALES</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${totalDia1.toFixed(1)} h</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${totalDia2.toFixed(1)} h</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${totalDia3.toFixed(1)} h</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-800">${totalGeneral.toFixed(1)} h</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 text-left">TOTALES GENERALES</td>
+                <td class="table-data font-bold text-gray-900">${totalDia1.toFixed(1)} h</td>
+                <td class="table-data font-bold text-gray-900">${totalDia2.toFixed(1)} h</td>
+                <td class="table-data font-bold text-gray-900">${totalDia3.toFixed(1)} h</td>
+                <td class="table-data font-bold text-blue-800">${totalGeneral.toFixed(1)} h</td>
             `;
             tableFooter.appendChild(totalRow);
         }
         
 
         /**
-         * Renderiza la tabla de resumen (desviación) con el total de columna.
+         * Renderiza la tabla de resumen (desviación y compensación) con el total de columna.
          * @param {Array<Object>} summaryData - Los datos de resumen.
          */
         function renderSummaryTable(summaryData) {
@@ -316,11 +345,19 @@ REVILLA OCHOA JEISOM JAVIER,5.5,6,-0.5,
             let totalHoras = 0;
             let totalPlaneadas = 0;
             let totalAdicionales = 0;
+            let totalP70 = 0;
+            let totalExtras = 0;
+            let totalCompensacion = 0;
+            let totalFinal = 0; // El nuevo total final
 
             summaryData.forEach(item => {
-                totalHoras += item.totalHoras || 0;
-                totalPlaneadas += item.horasPlaneadas || 0;
-                totalAdicionales += item.horasAdicionales || 0;
+                totalHoras += item.totalHoras;
+                totalPlaneadas += item.horasPlaneadas;
+                totalAdicionales += item.horasAdicionales;
+                totalP70 += item.p70;
+                totalExtras += item.horasExtras;
+                totalCompensacion += item.compensacion;
+                totalFinal += item.total; // Sumar el nuevo campo 'total'
 
                 // Definir color de texto para las horas adicionales (rojo para positivo, verde para negativo)
                 const deviationClass = item.horasAdicionales > 0 
@@ -332,24 +369,32 @@ REVILLA OCHOA JEISOM JAVIER,5.5,6,-0.5,
                 const row = document.createElement('tr');
                 row.classList.add('hover:bg-blue-50', 'transition-colors');
                 row.innerHTML = `
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${item.colaborador}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${item.totalHoras.toFixed(1)} h</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${item.horasPlaneadas.toFixed(1)} h</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm ${deviationClass}">${item.horasAdicionales.toFixed(1)} h</td>
+                    <td class="table-data text-left font-medium text-gray-900">${item.colaborador}</td>
+                    <td class="table-data text-gray-700">${item.totalHoras.toFixed(1)} h</td>
+                    <td class="table-data text-gray-700">${item.horasPlaneadas.toFixed(1)} h</td>
+                    <td class="table-data ${deviationClass}">${item.horasAdicionales.toFixed(1)} h</td>
+                    <td class="table-data text-gray-700">${item.p70.toFixed(2)} h</td>
+                    <td class="table-data text-gray-700">${item.horasExtras.toFixed(2)} h</td>
+                    <td class="table-data text-gray-700">${item.compensacion.toFixed(2)} h</td>
+                    <td class="table-data final-total">${item.total.toFixed(2)} h</td>
                 `;
                 tableBody.appendChild(row);
             });
             
             // Fila de Total de Resumen
-            const totalRow = document.createElement('tr');
             const totalDeviationClass = totalAdicionales > 0 ? 'text-red-800' : totalAdicionales < 0 ? 'text-green-800' : 'text-gray-800';
 
+            const totalRow = document.createElement('tr');
             totalRow.classList.add('deviation-row');
             totalRow.innerHTML = `
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">TOTALES DE DESVIACIÓN</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${totalHoras.toFixed(1)} h</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${totalPlaneadas.toFixed(1)} h</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-bold ${totalDeviationClass}">${totalAdicionales.toFixed(1)} h</td>
+                <td class="table-data text-left font-bold text-gray-900">TOTALES DE PROYECTO</td>
+                <td class="table-data font-bold text-gray-900">${totalHoras.toFixed(1)} h</td>
+                <td class="table-data font-bold text-gray-900">${totalPlaneadas.toFixed(1)} h</td>
+                <td class="table-data font-bold ${totalDeviationClass}">${totalAdicionales.toFixed(1)} h</td>
+                <td class="table-data font-bold text-gray-900">${totalP70.toFixed(2)} h</td>
+                <td class="table-data font-bold text-gray-900">${totalExtras.toFixed(2)} h</td>
+                <td class="table-data font-bold text-gray-900">${totalCompensacion.toFixed(2)} h</td>
+                <td class="table-data font-bold text-blue-900 final-total">${totalFinal.toFixed(2)} h</td>
             `;
             tableFooter.appendChild(totalRow);
         }
@@ -364,7 +409,9 @@ REVILLA OCHOA JEISOM JAVIER,5.5,6,-0.5,
             const additionalHours = data.map(item => item.horasAdicionales);
 
             // --- Gráfico 1: Horas Totales Registradas ---
-            new Chart(document.getElementById('totalHoursChart').getContext('2d'), {
+            // Destruir gráfico existente si existe
+            if (window.totalHoursChartInstance) { window.totalHoursChartInstance.destroy(); }
+            window.totalHoursChartInstance = new Chart(document.getElementById('totalHoursChart').getContext('2d'), {
                 type: 'bar',
                 data: {
                     labels: labels,
@@ -405,7 +452,9 @@ REVILLA OCHOA JEISOM JAVIER,5.5,6,-0.5,
             });
 
             // --- Gráfico 2: Horas Adicionales (Desviación) ---
-            new Chart(document.getElementById('additionalHoursChart').getContext('2d'), {
+            // Destruir gráfico existente si existe
+            if (window.additionalHoursChartInstance) { window.additionalHoursChartInstance.destroy(); }
+            window.additionalHoursChartInstance = new Chart(document.getElementById('additionalHoursChart').getContext('2d'), {
                 type: 'bar',
                 data: {
                     labels: labels,
