@@ -3,236 +3,392 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Horas - Pase a Producción</title>
+    <title>Dashboard de Horas de Pase a Producción</title>
     <!-- Carga de Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Configuración para usar la fuente Inter -->
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    },
-                }
-            }
-        }
-    </script>
+    <!-- Carga de Chart.js para gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
     <style>
-        /* Estilos personalizados para asegurar el uso de la fuente Inter */
+        /* Personalización de la fuente y estilos base */
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f7f7f7; /* Fondo suave */
+            background-color: #f4f7f9;
         }
-        /* Clase para las tarjetas de información */
         .card {
-            background-color: #ffffff;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
             border-radius: 0.75rem; /* rounded-xl */
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* shadow-xl */
-            padding: 1.5rem;
-            transition: transform 0.3s ease;
         }
-        .card:hover {
-            transform: translateY(-2px);
+        /* Estilos específicos para la tabla */
+        .table-header {
+            background-color: #3b82f6; /* blue-500 */
+            color: white;
+            padding: 0.75rem 1.5rem;
+            text-align: left;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.875rem;
         }
-        /* Estilo para los elementos de la lista de razones (cambio de bullet a ícono) */
-        .reason-item {
-            display: flex;
-            align-items: flex-start;
-            padding: 0.75rem;
-            border-radius: 0.5rem;
-            background-color: #f0f4ff; /* Indigo 50 */
-            transition: background-color 0.2s;
+        .total-row {
+            background-color: #e0f2fe; /* blue-100 */
+            font-weight: bold;
         }
-        .reason-item:hover {
-            background-color: #e5ebff;
+        .deviation-row {
+            background-color: #fef3c7; /* yellow-100 */
+            font-weight: bold;
+            color: #b45309; /* amber-800 */
         }
     </style>
-    <!-- Carga de Chart.js para visualización de datos -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body class="p-4 md:p-8">
 
-    <div class="max-w-7xl mx-auto">
-        <!-- Título del Dashboard -->
-        <header class="mb-8">
-            <h1 class="text-4xl font-extrabold text-indigo-700 mb-2">
-                Dashboard de Horas
-            </h1>
-            <p class="text-xl text-gray-600">
-                Análisis de Horas Consumidas en el Último Pase a Producción
-            </p>
-        </header>
+    <div id="app" class="max-w-7xl mx-auto">
+        <h1 class="text-3xl md:text-4xl font-extrabold text-gray-900 mb-6 text-center">
+            Dashboard de Horas - Pase a Producción SMART
+        </h1>
+        <p class="text-center text-gray-600 mb-8">
+            Resumen de horas registradas por día, totales y desviación (Planeado estándar: 16h, Revilla: 6h)
+        </p>
 
-        <!-- Contenedor Principal de Gráficos -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-
-            <!-- Card 1: Total de Horas por Colaborador -->
-            <div class="lg:col-span-2 card">
-                <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">
-                    Total de Horas Trabajadas (Resumen)
-                </h2>
-                <div class="relative h-96">
-                    <canvas id="totalHoursChart"></canvas>
-                </div>
+        <!-- Contenedor de Gráficos -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            
+            <!-- Gráfico 1: Horas Totales Registradas -->
+            <div class="card bg-white p-4">
+                <h2 class="text-xl font-semibold text-gray-700 mb-4">Horas Totales Registradas por Colaborador</h2>
+                <canvas id="totalHoursChart"></canvas>
             </div>
 
-            <!-- Card 2: Resumen Cualitativo (Razones) -->
-            <div class="lg:col-span-1 card">
-                <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">
-                    Razones de Tardanaza (Puntos de Análisis)
-                </h2>
-                <div id="reasonsList" class="space-y-3 h-96 overflow-y-auto p-1">
-                    <!-- Las razones se insertarán aquí con JavaScript -->
-                    <p class="text-gray-500 italic">Cargando razones...</p>
-                </div>
+            <!-- Gráfico 2: Desviación de Horas (Adicionales/Faltantes) -->
+            <div class="card bg-white p-4">
+                <h2 class="text-xl font-semibold text-gray-700 mb-4">Horas Adicionales vs. Planeadas</h2>
+                <canvas id="additionalHoursChart"></canvas>
             </div>
+
         </div>
-
-        <!-- Tabla de Desglose Detallado -->
-        <div class="card mb-8">
-            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">
-                Desglose Detallado de Horas por Día
-            </h2>
+        
+        <!-- Tabla de Detalle por Día -->
+        <div class="card bg-white overflow-hidden mb-8">
+            <h2 class="text-xl font-semibold text-gray-700 p-4 border-b">Horas Registradas Detalladas por Día</h2>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-indigo-50">
+                    <thead>
                         <tr>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-indigo-700 uppercase tracking-wider">
-                                Colaborador
-                            </th>
-                            <th id="headerDay1" scope="col" class="px-6 py-3 text-right text-xs font-medium text-indigo-700 uppercase tracking-wider">
-                                Día 1
-                            </th>
-                            <th id="headerDay2" scope="col" class="px-6 py-3 text-right text-xs font-medium text-indigo-700 uppercase tracking-wider">
-                                Día 2
-                            </th>
-                            <th id="headerDay3" scope="col" class="px-6 py-3 text-right text-xs font-medium text-indigo-700 uppercase tracking-wider">
-                                Día 3
-                            </th>
-                            <th scope="col" class="px-6 py-3 text-right text-xs font-extrabold text-indigo-900 uppercase tracking-wider">
-                                Total
-                            </th>
+                            <th class="table-header rounded-tl-xl">Colaborador</th>
+                            <th class="table-header">viernes 17/10</th>
+                            <th class="table-header">Sábado 18/10</th>
+                            <th class="table-header">Domingo 19/10</th>
+                            <th class="table-header rounded-tr-xl">Total Registrado</th>
                         </tr>
                     </thead>
-                    <tbody id="hoursTableBody" class="bg-white divide-y divide-gray-200">
-                        <!-- Las filas de la tabla se insertarán aquí con JavaScript -->
+                    <tbody class="bg-white divide-y divide-gray-200" id="dailyTableBody">
+                        <!-- Filas de datos por día se insertarán aquí -->
                     </tbody>
+                    <tfoot id="dailyTableFooter">
+                        <!-- Fila de totales se insertará aquí -->
+                    </tfoot>
                 </table>
             </div>
         </div>
+
+
+        <!-- Tabla de Resumen (Desviación) -->
+        <div class="card bg-white overflow-hidden mb-8">
+            <h2 class="text-xl font-semibold text-gray-700 p-4 border-b">Resumen y Desviación de Horas</h2>
+            <div class="overflow-x-auto">
+                <table id="dataTable" class="min-w-full divide-y divide-gray-200">
+                    <thead>
+                        <tr>
+                            <th class="table-header rounded-tl-xl">Colaborador</th>
+                            <th class="table-header">Horas Totales</th>
+                            <th class="table-header">Horas Planeadas</th>
+                            <th class="table-header rounded-tr-xl">Horas Adicionales (Desviación)</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-200" id="summaryTableBody">
+                        <!-- Filas de resumen se insertarán aquí -->
+                    </tbody>
+                     <tfoot id="summaryTableFooter">
+                        <!-- Fila de totales de resumen se insertará aquí -->
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Cuadro de Razones de Tardanzas / Desviación -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="card bg-white p-6 lg:col-span-3">
+                <h2 class="text-xl font-semibold text-gray-700 mb-4 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    Razones Comunes de Desviación (Tardanzas en el Pase)
+                </h2>
+                <div class="text-gray-600 space-y-3">
+                    <p class="font-medium text-sm">Esta sección requiere información cualitativa, no disponible en el CSV. Se puede completar manualmente o con una fuente de datos adicional.</p>
+                    <ul class="list-disc list-inside ml-4 text-sm text-gray-700">
+                        <li>Fallas inesperadas en la base de datos (BD).</li>
+                        <li>Retrasos en la aprobación de QA/Seguridad.</li>
+                        <li>Problemas de comunicación entre equipos.</li>
+                        <li>Complejidad no prevista en la limpieza de datos.</li>
+                        <li>Dependencias externas no resueltas a tiempo.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <script>
-        // Datos CSV proporcionados por el usuario
-        const csvData = `COLABORADOR,viernes 17/10,Sabado 18/10,domingo 19/10,Total,,RAZONES DE TARDANZA EN EL PASE
-GIUBASSO JIMENEZ MARIANGELA FRANCHESCA,8,10,5.5,23.5,,TIEMPOS CORTOS DE MIGRACIÓN
-LINARES VIÑA ALEXANDRA,12,21,13.5,46.5,,"CURVA DE APRENDIZAJE (BD, NUEVA INFRA)"
-HERRERA CALERO CARLOS DANIEL,12,21,14,47,,FALLOS EN PRUEBAS DE DESARROLLO
-YZQUIERDO TAPIA KEVIN ALEXANDER,10,17,15,42,,LO METICULOSO QUE TENIAMOS QUE SER CON LAS PRUEBAS DE QA
-QUISPE APON OMAR GABRIEL ANDRE,9,16,16,41,,LAS NUEVAS FUNCIONALIDADES DE MARCAS Y TAREO
-TAPARA ALDANA ROBERTO ARMANDO,10,18.5,13,41.5,,FALLOS POR FALTA DE DESCANSO DE COLABORADORES
-VILLAVICENCIO RAMOS DANIEL EDUARDO,11.5,15.5,12.2,39.2,,LAS PRUEBAS CON 10 USUARIOS NO ES IGUAL QUE PRODUCCIÓN
-CARRASCO CUNYA ANTONY STHIF,10,11,15.5,36.5,,"CASOS NO CONTEMPLADOS AL DESACOPLAR MÓDULOS (SOLICITUDES-TAREO, HISTÓRICOS,VALIDACIONES DE MARCACIONES CON TAREO)"
-JULCA GONZALES JULIO CÉSAR,10,16,15.5,41.5,,"ENTRENAMIENTO DE SERVIDESK A CELY Y ROSA PARA LAS MESAS ÁGILES (CAMBIOS DE COMPENSACIÓN POR EXTRA, ETC)"
-PADILLA AVALOS DIOGO ARMANDO,10,0,8,18,,APOYO A RRHH CON CIERRES Y DUDAS DE LOS COLABORADORES
-CONDORI CONDORI ROXANA,11,13.5,6.2,30.7,,
-REVILLA OCHOA JEISOM JAVIER,0,4,1.5,5.5,,
-,,,,,,\n,,,,,,\nACTIVIDADES PASE,HORAS IDEALES,,,,,\n"Pase Front, Back y BD",5,,,,,\nPruebas post producción,10,,,,,\nLimpieza de datos QA (snapshot BD),1,,,,`;
+        // Contenido del archivo CSV para el análisis
+        const csvData = `COLABORADOR,viernes 17/10,Sabado 18/10,domingo 19/10,Total
+GIUBASSO JIMENEZ MARIANGELA FRANCHESCA,8,10,5.5,23.5
+LINARES VIÑA ALEXANDRA,12,21,13.5,46.5
+HERRERA CALERO CARLOS DANIEL,12,21,14,47
+YZQUIERDO TAPIA KEVIN ALEXANDER,10,17,15,42
+QUISPE APON OMAR GABRIEL ANDRE,9,16,16,41
+TAPARA ALDANA ROBERTO ARMANDO,10,18.5,13,41.5
+VILLAVICENCIO RAMOS DANIEL EDUARDO,11.5,15.5,12.2,39.2
+CARRASCO CUNYA ANTONY STHIF,10,11,15.5,36.5
+JULCA GONZALES JULIO CÉSAR,10,16,15.5,41.5
+PADILLA AVALOS DIOGO ARMANDO,10,0,8,18
+CONDORI CONDORI ROXANA,11,13.5,6.2,30.7
+REVILLA OCHOA JEISOM JAVIER,0,4,1.5,5.5
+,,,
+Horas planificadas,,,
+ACTIVIDADES PASE,HORAS IDEALES,,,
+"Pase Front, Back y BD",5,,,
+Pruebas post producción,10,,,
+Limpieza de datos QA (snapshot BD),1,,,
+Total,16,,,
+,,,
+Horas planificadas VS Registradas,,,
+COLABORADOR, HORAS TOTALES,HORAS PLANEADAS,HORAS ADICIONALES,
+GIUBASSO JIMENEZ MARIANGELA FRANCHESCA,23.5,16,7.5,
+LINARES VIÑA ALEXANDRA,46.5,16,30.5,
+HERRERA CALERO CARLOS DANIEL,47,16,31,
+YZQUIERDO TAPIA KEVIN ALEXANDER,42,16,26,
+QUISPE APON OMAR GABRIEL ANDRE,41,16,25,
+TAPARA ALDANA ROBERTO ARMANDO,41.5,16,25.5,
+VILLAVICENCIO RAMOS DANIEL EDUARDO,39.2,16,23.2,
+CARRASCO CUNYA ANTONY STHIF,36.5,16,20.5,
+JULCA GONZALES JULIO CÉSAR,41.5,16,25.5,
+PADILLA AVALOS DIOGO ARMANDO,18,16,2,
+CONDORI CONDORI ROXANA,30.7,16,14.7,
+REVILLA OCHOA JEISOM JAVIER,5.5,6,-0.5,
+`;
 
-        // Colores y utilidades para Chart.js
-        const CHART_COLOR_PRIMARY = 'rgba(79, 70, 229, 0.8)'; // Indigo 500
-        const CHART_COLOR_HOVER = 'rgba(79, 70, 229, 1)';
-        
-        // Colores para el desglose (días)
-        const DAY_COLORS = [
-            'rgba(34, 197, 94, 0.8)',  // Esmeralda 500
-            'rgba(245, 158, 11, 0.8)', // Ámbar 500
-            'rgba(239, 68, 68, 0.8)',  // Rojo 500
-        ];
-        
         /**
-         * Parsea la cadena CSV y extrae los datos de los colaboradores.
-         * @param {string} csv - La cadena de datos CSV.
-         * @returns {{headers: string[], data: object[]}} Objeto con encabezados y datos limpios.
+         * Estructura para almacenar los datos diarios y de resumen.
+         * @typedef {Object} ParsedData
+         * @property {Array<Object>} daily - Datos de horas por día.
+         * @property {Array<Object>} summary - Datos de resumen (total, planeado, desviación).
          */
-        function parseCSV(csv) {
-            // Dividir por líneas y manejar el problema de las comillas en los datos
-            const lines = csv.split('\n').filter(line => line.trim().length > 0);
+
+        /**
+         * Analiza el contenido del CSV para extraer los datos diarios y de resumen.
+         * @param {string} csvText - El contenido completo del CSV.
+         * @returns {ParsedData} Un objeto con los datos diarios y de resumen.
+         */
+        function parseData(csvText) {
+            const lines = csvText.trim().split('\n');
+            const dailyData = [];
+            const summaryData = [];
             
-            // La primera línea son los encabezados
-            const headerLine = lines[0];
-            
-            // Función simple para dividir la línea respetando las comillas
-            const splitLine = (line) => {
-                // Regex para dividir por coma, pero ignorar las comas dentro de comillas dobles
-                const parts = line.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g);
-                // Si la línea es solo comas (líneas vacías), match devuelve null. En ese caso, devolvemos un array vacío.
-                return parts ? parts.map(p => p.replace(/^"|"$/g, '').trim()) : [];
-            };
+            // Sección de Horas Diarias (Inicio del archivo)
+            let dailyEndLine = lines.findIndex(line => line.includes('Horas planificadas VS Registradas'));
 
-            const headers = splitLine(headerLine);
-            const data = [];
-
-            // Iterar sobre las líneas de datos (a partir de la segunda línea)
-            for (let i = 1; i < lines.length; i++) {
-                const values = splitLine(lines[i]);
-                
-                // Si la primera columna está vacía, asumimos que es una fila de resumen/pie de página y paramos.
-                if (!values[0] || values[0].toUpperCase() === 'ACTIVIDADES PASE') {
-                    break;
-                }
-
-                // Se requiere al menos el colaborador (values[0]) y las 4 columnas de horas.
-                if (values[0] && values.length >= 5) {
-                    const row = {
-                        colaborador: values[0],
-                        // Los índices de Días y Total (1 a 4) son consistentes en la estructura del CSV
-                        day1: parseFloat(values[1]) || 0,
-                        day2: parseFloat(values[2]) || 0,
-                        day3: parseFloat(values[3]) || 0,
-                        total: parseFloat(values[4]) || 0,
-                        // La razón es el índice 6 si existe, si no, es 'N/A'
-                        razon: values[6] || 'N/A' 
-                    };
-                    data.push(row);
+            if (lines.length > 0) {
+                // Las filas de datos comienzan en la línea 1 (índice 1)
+                for (let i = 1; i < dailyEndLine; i++) {
+                    const line = lines[i].trim();
+                    if (line === '' || line.match(/^,*$/)) break;
+                    
+                    const parts = line.split(',').map(p => p.trim());
+                    if (parts.length >= 5) {
+                        dailyData.push({
+                            colaborador: parts[0],
+                            dia1: parseFloat(parts[1]), 
+                            dia2: parseFloat(parts[2]), 
+                            dia3: parseFloat(parts[3]), 
+                            total: parseFloat(parts[4]),
+                        });
+                    }
                 }
             }
 
-            // Los encabezados útiles para la tabla son Day 1, Day 2, Day 3 y Total
-            const dayHeaders = headers.slice(1, 4);
 
-            return { headers: dayHeaders, data: data };
+            // Sección de Horas de Resumen (Desviación)
+            const targetHeader = 'COLABORADOR, HORAS TOTALES,HORAS PLANEADAS,HORAS ADICIONALES,';
+            let startParsingSummary = false;
+
+            for (const line of lines) {
+                const trimmedLine = line.trim();
+
+                if (trimmedLine.includes(targetHeader)) {
+                    startParsingSummary = true;
+                    continue; // Saltar la línea del encabezado
+                }
+
+                if (startParsingSummary) {
+                    if (trimmedLine === '' || trimmedLine.match(/^,*$/)) {
+                        break;
+                    }
+
+                    const parts = trimmedLine.split(',').map(p => p.trim());
+                    
+                    if (parts.length >= 4) {
+                        const colaborador = parts[0];
+                        const totalHoras = parseFloat(parts[1]);
+                        const planeadas = parseFloat(parts[2]);
+                        const adicionales = parseFloat(parts[3]);
+
+                        if (!isNaN(totalHoras) && !isNaN(planeadas) && colaborador) {
+                            summaryData.push({
+                                colaborador: colaborador,
+                                totalHoras: totalHoras,
+                                horasPlaneadas: planeadas,
+                                horasAdicionales: adicionales
+                            });
+                        }
+                    }
+                }
+            }
+            return { daily: dailyData, summary: summaryData };
         }
 
         /**
-         * Renderiza el gráfico de barras del total de horas.
-         * @param {object[]} data - Datos de los colaboradores.
-         * @param {string[]} labels - Nombres de los colaboradores.
+         * Renderiza la tabla de horas diarias con el total de columna.
+         * @param {Array<Object>} dailyData - Los datos de horas por día.
          */
-        function renderTotalHoursChart(data, labels) {
-            const ctx = document.getElementById('totalHoursChart').getContext('2d');
-            
-            // Extraer los totales
-            const totals = data.map(item => item.total);
+        function renderDailyTable(dailyData) {
+            const tableBody = document.getElementById('dailyTableBody');
+            const tableFooter = document.getElementById('dailyTableFooter');
+            tableBody.innerHTML = ''; 
+            tableFooter.innerHTML = '';
 
-            new Chart(ctx, {
+            let totalDia1 = 0;
+            let totalDia2 = 0;
+            let totalDia3 = 0;
+            let totalGeneral = 0;
+
+            dailyData.forEach(item => {
+                totalDia1 += item.dia1 || 0;
+                totalDia2 += item.dia2 || 0;
+                totalDia3 += item.dia3 || 0;
+                totalGeneral += item.total || 0;
+
+                const row = document.createElement('tr');
+                row.classList.add('hover:bg-blue-50', 'transition-colors');
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${item.colaborador}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${(item.dia1 || 0).toFixed(1)} h</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${(item.dia2 || 0).toFixed(1)} h</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${(item.dia3 || 0).toFixed(1)} h</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">${(item.total || 0).toFixed(1)} h</td>
+                `;
+                tableBody.appendChild(row);
+            });
+
+            // Fila de Total
+            const totalRow = document.createElement('tr');
+            totalRow.classList.add('total-row');
+            totalRow.innerHTML = `
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">TOTALES GENERALES</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${totalDia1.toFixed(1)} h</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${totalDia2.toFixed(1)} h</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${totalDia3.toFixed(1)} h</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-800">${totalGeneral.toFixed(1)} h</td>
+            `;
+            tableFooter.appendChild(totalRow);
+        }
+        
+
+        /**
+         * Renderiza la tabla de resumen (desviación) con el total de columna.
+         * @param {Array<Object>} summaryData - Los datos de resumen.
+         */
+        function renderSummaryTable(summaryData) {
+            const tableBody = document.getElementById('summaryTableBody');
+            const tableFooter = document.getElementById('summaryTableFooter');
+            tableBody.innerHTML = ''; 
+            tableFooter.innerHTML = '';
+
+            let totalHoras = 0;
+            let totalPlaneadas = 0;
+            let totalAdicionales = 0;
+
+            summaryData.forEach(item => {
+                totalHoras += item.totalHoras || 0;
+                totalPlaneadas += item.horasPlaneadas || 0;
+                totalAdicionales += item.horasAdicionales || 0;
+
+                // Definir color de texto para las horas adicionales (rojo para positivo, verde para negativo)
+                const deviationClass = item.horasAdicionales > 0 
+                    ? 'text-red-600 font-semibold' 
+                    : item.horasAdicionales < 0 
+                        ? 'text-green-600 font-semibold' 
+                        : 'text-gray-600';
+
+                const row = document.createElement('tr');
+                row.classList.add('hover:bg-blue-50', 'transition-colors');
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${item.colaborador}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${item.totalHoras.toFixed(1)} h</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${item.horasPlaneadas.toFixed(1)} h</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm ${deviationClass}">${item.horasAdicionales.toFixed(1)} h</td>
+                `;
+                tableBody.appendChild(row);
+            });
+            
+            // Fila de Total de Resumen
+            const totalRow = document.createElement('tr');
+            const totalDeviationClass = totalAdicionales > 0 ? 'text-red-800' : totalAdicionales < 0 ? 'text-green-800' : 'text-gray-800';
+
+            totalRow.classList.add('deviation-row');
+            totalRow.innerHTML = `
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">TOTALES DE DESVIACIÓN</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${totalHoras.toFixed(1)} h</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${totalPlaneadas.toFixed(1)} h</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-bold ${totalDeviationClass}">${totalAdicionales.toFixed(1)} h</td>
+            `;
+            tableFooter.appendChild(totalRow);
+        }
+
+        /**
+         * Renderiza los dos gráficos usando Chart.js.
+         * @param {Array<Object>} data - Los datos de los colaboradores.
+         */
+        function renderCharts(data) {
+            const labels = data.map(item => item.colaborador.split(' ')[0]); // Usar solo el primer nombre
+            const totalHours = data.map(item => item.totalHoras);
+            const additionalHours = data.map(item => item.horasAdicionales);
+
+            // --- Gráfico 1: Horas Totales Registradas ---
+            new Chart(document.getElementById('totalHoursChart').getContext('2d'), {
                 type: 'bar',
                 data: {
                     labels: labels,
                     datasets: [{
-                        label: 'Total de Horas Trabajadas',
-                        data: totals,
-                        backgroundColor: CHART_COLOR_PRIMARY,
-                        borderColor: CHART_COLOR_HOVER,
+                        label: 'Horas Totales (h)',
+                        data: totalHours,
+                        backgroundColor: '#3b82f6', // blue-500
+                        borderColor: '#2563eb', // blue-600
                         borderWidth: 1,
                         borderRadius: 4,
                     }]
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: false,
-                    indexAxis: 'y', // Convertir a barras horizontales
+                    maintainAspectRatio: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Horas'
+                            }
+                        }
+                    },
                     plugins: {
                         legend: {
                             display: false
@@ -240,160 +396,77 @@ REVILLA OCHOA JEISOM JAVIER,0,4,1.5,5.5,,
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
-                                    return context.dataset.label + ': ' + context.parsed.x + ' horas';
+                                    return context.dataset.label + ': ' + context.formattedValue + ' h';
                                 }
                             }
-                        },
-                        title: {
-                            display: true,
-                            text: 'Total de Horas Consumidas por Colaborador',
-                            font: { size: 16 }
                         }
-                    },
+                    }
+                }
+            });
+
+            // --- Gráfico 2: Horas Adicionales (Desviación) ---
+            new Chart(document.getElementById('additionalHoursChart').getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Horas Adicionales (h)',
+                        data: additionalHours,
+                        // Colores condicionales: Rojo para desviación positiva (más horas), Azul/Verde para desviación negativa (menos horas)
+                        backgroundColor: additionalHours.map(h => h > 0 ? '#ef4444' : '#10b981'), // red-500 o emerald-500
+                        borderColor: additionalHours.map(h => h > 0 ? '#dc2626' : '#059669'), // red-600 o emerald-600
+                        borderWidth: 1,
+                        borderRadius: 4,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
                     scales: {
-                        x: {
+                        y: {
                             title: {
                                 display: true,
-                                text: 'Horas',
-                                font: { weight: 'bold' }
-                            },
-                            beginAtZero: true
+                                text: 'Desviación (Horas)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
                         },
-                        y: {
-                            ticks: {
-                                autoSkip: false,
-                            },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + context.formattedValue + ' h';
+                                },
+                                title: function(context) {
+                                    const fullCollaboratorName = data[context[0].dataIndex].colaborador;
+                                    return fullCollaboratorName;
+                                }
+                            }
                         }
                     }
                 }
             });
         }
 
-        /**
-         * Renderiza la tabla de desglose de horas diarias.
-         * @param {object[]} data - Datos de los colaboradores.
-         * @param {string[]} dayHeaders - Encabezados de los días.
-         */
-        function renderHoursTable(data, dayHeaders) {
-            const tableBody = document.getElementById('hoursTableBody');
-            const [header1, header2, header3] = dayHeaders;
-
-            // Actualizar encabezados de días
-            document.getElementById('headerDay1').textContent = header1;
-            document.getElementById('headerDay2').textContent = header2;
-            document.getElementById('headerDay3').textContent = header3;
-
-            tableBody.innerHTML = ''; // Limpiar contenido previo
-
-            data.forEach((row, index) => {
-                const tr = document.createElement('tr');
-                // Estilo de fila alternado para mejor legibilidad
-                tr.className = index % 2 === 0 ? 'bg-white' : 'bg-gray-50';
-
-                tr.innerHTML = `
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        ${row.colaborador}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
-                        ${row.day1.toFixed(1)}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
-                        ${row.day2.toFixed(1)}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
-                        ${row.day3.toFixed(1)}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-extrabold text-indigo-700 text-right">
-                        ${row.total.toFixed(1)}
-                    </td>
-                `;
-                tableBody.appendChild(tr);
-            });
-        }
-
-        /**
-         * Renderiza la lista de razones de tardanza (temas clave) de forma independiente.
-         */
-        function renderReasonsList() {
-            const reasonsListContainer = document.getElementById('reasonsList');
-            reasonsListContainer.innerHTML = ''; // Limpiar contenido previo
-
-            // Lista explícita de razones proporcionada por el usuario
-            const hardcodedReasons = [
-                "TIEMPOS CORTOS DE MIGRACIÓN",
-                "CURVA DE APRENDIZAJE (BD, NUEVA INFRA)",
-                "FALLOS EN PRUEBAS DE DESARROLLO",
-                "LO METICULOSO QUE TENIAMOS QUE SER CON LAS PRUEBAS DE QA",
-                "LAS NUEVAS FUNCIONALIDADES DE MARCAS Y TAREO",
-                "FALLOS POR FALTA DE DESCANSO DE COLABORADORES",
-                "LAS PRUEBAS CON 10 USUARIOS NO ES IGUAL QUE PRODUCCIÓN",
-                "CASOS NO CONTEMPLADOS AL DESACOPLAR MÓDULOS (SOLICITUDES-TAREO, HISTÓRICOS,VALIDACIONES DE MARCACIONES CON TAREO)",
-                "ENTRENAMIENTO DE SERVIDESK A CELY Y ROSA PARA LAS MESAS ÁGILES (CAMBIOS DE COMPENSACIÓN POR EXTRA, ETC)",
-                "APOYO A RRHH CON CIERRES Y DUDAS DE LOS COLABORADORES"
-            ];
-            
-            if (hardcodedReasons.length === 0) {
-                reasonsListContainer.innerHTML = '<p class="text-gray-500 italic p-4 text-center">No hay puntos de análisis cualitativo definidos.</p>';
-                return;
-            }
-            
-            const divList = document.createElement('div');
-            divList.className = 'space-y-2';
-
-            hardcodedReasons.forEach(reason => {
-                // Crear el elemento de tarjeta/razón
-                const reasonElement = document.createElement('div');
-                reasonElement.className = 'reason-item'; // Clase de estilo customizado
-
-                // Icono (un simple checkmark/bullet)
-                const iconSvg = `
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-indigo-500 mr-2 flex-shrink-0 mt-0.5" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
-                        <path d="M9 12l2 2 4-4"/>
-                    </svg>
-                `;
-                
-                reasonElement.innerHTML = `
-                    ${iconSvg}
-                    <p class="text-sm text-gray-700">${reason}</p>
-                `;
-                divList.appendChild(reasonElement);
-            });
-
-            reasonsListContainer.appendChild(divList);
-        }
-
-
-        // Función principal para ejecutar al cargar la página
-        function initializeDashboard() {
+        // --- Inicialización del Dashboard ---
+        window.onload = function() {
             try {
-                const { headers, data } = parseCSV(csvData);
-                
-                if (data.length === 0) {
-                    console.error("No se pudieron parsear datos de colaboradores.");
-                    document.getElementById('reasonsList').innerHTML = '<p class="text-red-500 font-semibold p-4 text-center">Error al cargar: No se encontraron datos de colaboradores válidos.</p>';
-                    return;
+                const parsedData = parseData(csvData);
+                if (parsedData.daily.length > 0 && parsedData.summary.length > 0) {
+                    renderDailyTable(parsedData.daily);
+                    renderSummaryTable(parsedData.summary);
+                    renderCharts(parsedData.summary);
+                } else {
+                    document.getElementById('app').innerHTML = '<p class="text-center text-red-500 text-lg p-10">No se pudieron extraer datos válidos del CSV para el dashboard.</p>';
                 }
-
-                const collaboratorLabels = data.map(item => item.colaborador);
-                
-                // 1. Renderizar Gráfico de Total de Horas
-                renderTotalHoursChart(data, collaboratorLabels);
-
-                // 2. Renderizar Tabla Detallada
-                renderHoursTable(data, headers);
-
-                // 3. Renderizar Lista de Razones (Ahora totalmente independiente del CSV)
-                renderReasonsList();
-
             } catch (error) {
                 console.error("Error al inicializar el dashboard:", error);
-                document.getElementById('reasonsList').innerHTML = '<p class="text-red-500 font-semibold p-4 text-center">Ocurrió un error al procesar los datos. Por favor, revisa el formato CSV.</p>';
+                document.getElementById('app').innerHTML = '<p class="text-center text-red-500 text-lg p-10">Ocurrió un error al procesar los datos.</p>';
             }
-        }
+        };
 
-        // Ejecutar la inicialización cuando el DOM esté listo
-        document.addEventListener('DOMContentLoaded', initializeDashboard);
     </script>
 </body>
 </html>
